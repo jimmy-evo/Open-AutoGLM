@@ -1,3 +1,5 @@
+platform-tools
+*.zip
 # Python
 __pycache__/
 *.py[cod]

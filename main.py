@@ -167,7 +167,7 @@ def check_system_requirements() -> bool:
     return all_passed
 
 
-def check_model_api(base_url: str, model_name: str, api_key: str = "EMPTY") -> bool:
+def check_model_api(base_url: str, model_name: str, api_key: str) -> bool:
     """
     Check if the model API is accessible and the specified model exists.
 
@@ -178,8 +178,7 @@ def check_model_api(base_url: str, model_name: str, api_key: str = "EMPTY") -> b
     Args:
         base_url: The API base URL
         model_name: The model name to check
-        api_key: The API key for authentication
-
+        api_key: The API key to use
     Returns:
         True if all checks pass, False otherwise.
     """
@@ -298,19 +297,23 @@ Examples:
         default=os.getenv("PHONE_AGENT_BASE_URL", "http://localhost:8000/v1"),
         help="Model API base URL",
     )
-
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        default=os.getenv("PHONE_AGENT_API_KEY", "EMPTY"),
+        help="Model API key",
+    )
+    parser.add_argument(
+        "--apikey",
+        type=str,
+        default=os.getenv("PHONE_AGENT_API_KEY", "EMPTY"),
+        help="Model API key",
+    )
     parser.add_argument(
         "--model",
         type=str,
         default=os.getenv("PHONE_AGENT_MODEL", "autoglm-phone-9b"),
         help="Model name",
-    )
-
-    parser.add_argument(
-        "--apikey",
-        type=str,
-        default=os.getenv("PHONE_AGENT_API_KEY", "EMPTY"),
-        help="API key for model authentication",
     )
 
     parser.add_argument(
@@ -377,13 +380,24 @@ Examples:
     )
 
     parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default=os.getenv("PHONE_AGENT_LOG_LEVEL", "INFO"),
+        help="Logging level (default: INFO)",
+    )
+
+    parser.add_argument(
         "task",
         nargs="?",
         type=str,
         help="Task to execute (interactive mode if not provided)",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.apikey != "EMPTY":
+        args.api_key = args.apikey
+    return args
 
 
 def handle_device_commands(args) -> bool:
@@ -476,14 +490,14 @@ def main():
         sys.exit(1)
 
     # Check model API connectivity and model availability
-    if not check_model_api(args.base_url, args.model, args.apikey):
+    if not check_model_api(args.base_url, args.model, args.api_key):
         sys.exit(1)
 
     # Create configurations
     model_config = ModelConfig(
         base_url=args.base_url,
+        api_key=args.api_key,
         model_name=args.model,
-        api_key=args.apikey,
     )
 
     agent_config = AgentConfig(
@@ -491,6 +505,7 @@ def main():
         device_id=args.device_id,
         verbose=not args.quiet,
         lang=args.lang,
+        log_level=args.log_level,
     )
 
     # Create agent

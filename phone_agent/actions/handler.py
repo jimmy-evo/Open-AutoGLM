@@ -1,5 +1,6 @@
 """Action handler for processing AI model outputs."""
 
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -17,6 +18,7 @@ from phone_agent.adb import (
     tap,
     type_text,
 )
+from phone_agent.logger import logger
 
 
 @dataclass
@@ -281,6 +283,21 @@ def parse_action(response: str) -> dict[str, Any]:
     try:
         # Try to evaluate as Python dict/function call
         response = response.strip()
+
+        # Extract do(...) or finish(...) from response
+        # Find the last occurrence of do( or finish( and extract the complete call
+        do_match = re.search(r"do\([^)]*\)", response)
+        finish_match = re.search(r"finish\([^)]*\)", response)
+
+        if do_match:
+            response = do_match.group(0)
+        elif finish_match:
+            response = finish_match.group(0)
+        else:
+            raise ValueError(f"Failed to parse action: {response}")
+        response = response.replace("\n", "")
+        logger.debug(f"cleaned response: {response}")
+
         if response.startswith("do"):
             action = eval(response)
         elif response.startswith("finish"):
